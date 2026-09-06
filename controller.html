@@ -1,0 +1,2782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOYCE Cue Timer — Stage Controller</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #0a0c10;
+      --bg-surface: #11141c;
+      --bg-card: #171b26;
+      --bg-card-hover: #1e2332;
+      --border: #262c3d;
+      --border-focus: #6366f1;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      
+      --accent-indigo: #6366f1;
+      --accent-indigo-hover: #4f46e5;
+      --accent-emerald: #10b981;
+      --accent-emerald-hover: #059669;
+      --accent-amber: #f59e0b;
+      --accent-amber-hover: #d97706;
+      --accent-rose: #ef4444;
+      --accent-rose-hover: #dc2626;
+      --accent-cyan: #06b6d4;
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-primary);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    /* Top Bar */
+    header {
+      background-color: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      background: linear-gradient(135deg, #6366f1, #3b82f6);
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 900;
+      font-size: 19px;
+      color: #fff;
+      box-shadow: 0 0 16px rgba(99, 102, 241, 0.45);
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 19px;
+      letter-spacing: -0.01em;
+      line-height: 1.1;
+    }
+
+    .brand-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+      margin-top: 2px;
+      letter-spacing: 0.04em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .live-clock {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      letter-spacing: 0.05em;
+    }
+
+    .stage-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      color: #fca5a5;
+      transition: all 0.3s ease;
+    }
+
+    .stage-status.connected {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: #6ee7b7;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+      box-shadow: 0 0 8px #ef4444;
+    }
+
+    .stage-status.connected .status-dot {
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+
+    .btn-launch-stage {
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+      color: #fff;
+      border: none;
+      padding: 7px 16px;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+      transition: all 0.2s;
+    }
+
+    .btn-launch-stage:hover {
+      background: linear-gradient(135deg, #4338ca, #4f46e5);
+      transform: translateY(-1px);
+    }
+
+    /* Main Layout */
+    .app-container {
+      display: grid;
+      grid-template-columns: 1fr 440px;
+      gap: 20px;
+      padding: 20px;
+      max-width: 1700px;
+      margin: 0 auto;
+      width: 100%;
+      flex: 1;
+    }
+
+    @media (max-width: 1180px) {
+      .app-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Panels */
+    .panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-card);
+      position: relative;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .panel-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Hero Timer Section - Streamlined Single Card */
+    .hero-timer-panel {
+      border-left: 6px solid var(--accent-indigo);
+      background: #06070a;
+      transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+      padding: 22px 24px;
+    }
+
+    .hero-timer-panel.state-running {
+      border-left-color: var(--accent-emerald);
+    }
+
+    .hero-timer-panel.state-warning {
+      border-left-color: var(--accent-amber);
+      background: radial-gradient(circle at 50% 30%, rgba(245, 158, 11, 0.08), #06070a 80%);
+      box-shadow: 0 0 30px rgba(245, 158, 11, 0.15);
+    }
+
+    .hero-timer-panel.state-critical {
+      border-left-color: var(--accent-rose);
+      background: radial-gradient(circle at 50% 30%, rgba(239, 68, 68, 0.14), #06070a 80%);
+      box-shadow: 0 0 35px rgba(239, 68, 68, 0.25);
+    }
+
+    .hero-timer-panel.state-finished {
+      border-left-color: var(--accent-rose);
+      background: radial-gradient(circle at 50% 30%, rgba(239, 68, 68, 0.22), #06070a 80%);
+    }
+
+    .hero-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .cue-meta-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .active-tag {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      color: #a5b4fc;
+      padding: 4px 10px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .cue-position-pill {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Live Message Indicator in Hero */
+    .hero-live-msg-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(245, 158, 11, 0.16);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+      animation: pulseAlert 2s infinite ease-in-out;
+    }
+
+    .hero-live-msg-badge.hidden {
+      display: none;
+    }
+
+    @keyframes pulseAlert {
+      0%, 100% { border-color: rgba(245, 158, 11, 0.4); }
+      50% { border-color: rgba(245, 158, 11, 0.9); box-shadow: 0 0 12px rgba(245, 158, 11, 0.4); }
+    }
+
+    .btn-hero-dismiss-msg {
+      background: rgba(245, 158, 11, 0.3);
+      border: none;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .btn-hero-dismiss-msg:hover {
+      background: #f59e0b;
+      color: #000;
+    }
+
+    /* Editable Hero Cue Title */
+    .hero-title-container {
+      width: 100%;
+      margin-bottom: 8px;
+      text-align: center;
+      position: relative;
+    }
+
+    .active-cue-input {
+      background: transparent;
+      border: 1px solid transparent;
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(22px, 2.5vw, 30px);
+      font-weight: 800;
+      text-align: center;
+      width: 100%;
+      outline: none;
+      border-radius: var(--radius-sm);
+      padding: 4px 10px;
+      transition: all 0.2s;
+      letter-spacing: -0.01em;
+    }
+
+    .active-cue-input:focus, .active-cue-input:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--border);
+    }
+
+    /* Hero Active Cue Notes Banner */
+    .hero-notes-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 90%;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .hero-notes-card.hidden {
+      display: none;
+    }
+
+    .hero-notes-icon {
+      color: var(--accent-indigo);
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .hero-notes-text {
+      font-style: italic;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+
+    /* Digits & Elapsed row */
+    .hero-timer-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 4px 0 14px;
+    }
+
+    .hero-timer-digits {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(70px, 9vw, 118px);
+      font-weight: 800;
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+      color: #ffffff;
+      transition: color 0.3s;
+      text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+    }
+
+    .state-warning .hero-timer-digits { color: var(--accent-amber); text-shadow: 0 0 20px rgba(245, 158, 11, 0.3); }
+    .state-critical .hero-timer-digits { color: var(--accent-rose); text-shadow: 0 0 24px rgba(239, 68, 68, 0.4); }
+    .state-finished .hero-timer-digits { 
+      color: var(--accent-rose); 
+      animation: blinkTimer 1s infinite alternate;
+    }
+
+    @keyframes blinkTimer {
+      from { opacity: 0.25; }
+      to { opacity: 1; }
+    }
+
+    /* Elapsed Time Indicator */
+    .hero-elapsed-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      padding: 4px 12px;
+      border-radius: 999px;
+      letter-spacing: 0.04em;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+    }
+
+    .hero-elapsed-badge.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .hero-elapsed-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 6px var(--accent-emerald);
+    }
+
+    /* Progress Track */
+    .hero-progress-track {
+      width: 100%;
+      height: 7px;
+      background: rgba(255, 255, 255, 0.07);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .hero-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent-indigo);
+      transition: width 0.3s linear, background-color 0.3s;
+    }
+
+    .state-running .hero-progress-fill { background: var(--accent-emerald); }
+    .state-warning .hero-progress-fill { background: var(--accent-amber); }
+    .state-critical .hero-progress-fill, .state-finished .hero-progress-fill { background: var(--accent-rose); }
+
+    /* Primary Controls Row */
+    .timer-primary-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      justify-content: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-timer-primary {
+      padding: 14px 26px;
+      border-radius: var(--radius-md);
+      font-family: 'Outfit', sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: none;
+      transition: all 0.15s ease-in-out;
+      min-width: 150px;
+    }
+
+    .btn-timer-primary:active {
+      transform: scale(0.97);
+    }
+
+    .btn-start {
+      background: var(--accent-emerald);
+      color: #fff;
+      box-shadow: 0 4px 18px rgba(16, 185, 129, 0.35);
+    }
+    .btn-start:hover { background: var(--accent-emerald-hover); }
+
+    .btn-pause {
+      background: var(--accent-amber);
+      color: #000;
+      box-shadow: 0 4px 18px rgba(245, 158, 11, 0.4);
+    }
+    .btn-pause:hover { background: var(--accent-amber-hover); }
+
+    .btn-reset {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      min-width: 110px;
+    }
+    .btn-reset:hover {
+      background: var(--bg-card-hover);
+      color: #fff;
+      border-color: #3b4256;
+    }
+
+    .controls-separator {
+      width: 1px;
+      height: 32px;
+      background: var(--border);
+      margin: 0 4px;
+    }
+
+    .btn-next-cue {
+      background: var(--accent-indigo);
+      color: #fff;
+      box-shadow: 0 4px 18px rgba(99, 102, 241, 0.35);
+      position: relative;
+    }
+    .btn-next-cue:hover { background: var(--accent-indigo-hover); }
+
+    /* Quick Time Adjusters (+1m, -1m, etc) */
+    .quick-adjust-bar {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-pill {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-pill:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border-color: #4b5563;
+    }
+
+    /* Stage Message Center */
+    .message-center-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .msg-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-preset-mode-toggle {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-preset-mode-toggle:hover {
+      color: #fff;
+      border-color: var(--border-focus);
+    }
+
+    .btn-preset-mode-toggle.is-editing {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: var(--accent-indigo);
+      color: #a5b4fc;
+    }
+
+    .active-message-banner {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .active-message-banner.hidden {
+      display: none;
+    }
+
+    .banner-text-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    .banner-badge {
+      font-size: 10px;
+      font-weight: 800;
+      background: #f59e0b;
+      color: #000;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      flex-shrink: 0;
+    }
+
+    .banner-content {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn-clear-msg {
+      background: transparent;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #f59e0b;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .btn-clear-msg:hover {
+      background: #f59e0b;
+      color: #000;
+    }
+
+    /* Message Presets Grid */
+    .msg-presets-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+    }
+
+    .preset-chip-wrapper {
+      position: relative;
+      display: flex;
+    }
+
+    .btn-msg-preset {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 9px 24px 9px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn-msg-preset:hover {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: rgba(99, 102, 241, 0.4);
+      color: #fff;
+    }
+
+    .btn-edit-preset-chip {
+      position: absolute;
+      right: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 2px 4px;
+      font-size: 11px;
+      border-radius: 4px;
+      opacity: 0.4;
+      transition: opacity 0.2s, color 0.2s;
+    }
+
+    .preset-chip-wrapper:hover .btn-edit-preset-chip,
+    .btn-preset-mode-toggle.is-editing ~ .msg-presets-grid .btn-edit-preset-chip {
+      opacity: 1;
+      color: #a5b4fc;
+    }
+
+    .custom-msg-bar {
+      display: flex;
+      gap: 8px;
+    }
+
+    .input-msg {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-msg:focus {
+      border-color: var(--border-focus);
+    }
+
+    .btn-send-msg {
+      background: var(--accent-amber);
+      color: #000;
+      border: none;
+      padding: 0 16px;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .btn-send-msg:hover {
+      background: var(--accent-amber-hover);
+    }
+
+    .btn-flash-stage {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+      padding: 4px 12px;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .btn-flash-stage:hover {
+      background: var(--accent-rose);
+      color: #fff;
+    }
+
+    /* Queue Panel (Right Column) */
+    .queue-panel {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .queue-header-stats {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .queue-run-time-badge {
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent-indigo);
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* Add Cue Box */
+    .queue-add-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      margin-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .form-group-title {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .input-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+
+    .input-text {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .input-text:focus {
+      border-color: var(--border-focus);
+    }
+
+    .duration-input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .duration-box {
+      display: flex;
+      align-items: center;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+    }
+
+    .duration-num {
+      width: 48px;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+      outline: none;
+    }
+
+    .duration-unit {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: 2px;
+    }
+
+    .preset-duration-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 2px;
+    }
+
+    .pill-sm {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .pill-sm:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .btn-add-cue {
+      background: var(--accent-indigo);
+      color: #fff;
+      border: none;
+      padding: 9px;
+      border-radius: var(--radius-sm);
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background-color 0.2s;
+    }
+
+    .btn-add-cue:hover {
+      background: var(--accent-indigo-hover);
+    }
+
+    /* Queue Items List */
+    .queue-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 480px;
+      padding-right: 4px;
+    }
+
+    .queue-item-card {
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      transition: all 0.2s;
+      overflow: hidden;
+    }
+
+    .queue-item-card:hover {
+      border-color: #3b4256;
+    }
+
+    .queue-item-card.is-active {
+      border-color: var(--accent-indigo);
+      background: rgba(99, 102, 241, 0.09);
+      box-shadow: 0 0 16px rgba(99, 102, 241, 0.15);
+    }
+
+    .queue-item-row {
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .queue-item-left {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      overflow: hidden;
+      flex: 1;
+    }
+
+    .queue-item-title {
+      font-weight: 600;
+      font-size: 13px;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .queue-item-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .queue-badge {
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 5px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-active { background: #6366f1; color: #fff; }
+    .badge-next { background: #3b82f6; color: #fff; }
+
+    .queue-duration {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+
+    .queue-notes-indicator {
+      font-size: 11px;
+      opacity: 0.7;
+    }
+
+    .queue-item-actions {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+
+    .btn-icon {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+
+    .btn-icon:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    .btn-icon.play-btn {
+      color: var(--accent-emerald);
+    }
+    .btn-icon.play-btn:hover {
+      background: rgba(16, 185, 129, 0.2);
+    }
+
+    .btn-icon.edit-btn:hover {
+      color: #a5b4fc;
+      background: rgba(99, 102, 241, 0.2);
+    }
+
+    .btn-icon.delete-btn:hover {
+      background: rgba(239, 68, 68, 0.2);
+      color: var(--accent-rose);
+    }
+
+    /* Slide-down Inline Cue Edit Drawer */
+    .queue-edit-drawer {
+      background: rgba(0, 0, 0, 0.35);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 12px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      animation: slideDown 0.2s ease-out;
+    }
+
+    .queue-edit-drawer.is-open {
+      display: flex;
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .edit-drawer-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .edit-drawer-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .btn-drawer-save {
+      background: var(--accent-indigo);
+      color: #fff;
+      border: none;
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-drawer-save:hover { background: var(--accent-indigo-hover); }
+
+    .btn-drawer-cancel {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .btn-drawer-cancel:hover { color: #fff; }
+
+    /* Queue Summary Bar & Footer */
+    .queue-summary-box {
+      margin-top: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .queue-summary-text {
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .queue-summary-val {
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+    }
+
+    .queue-footer {
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 6px;
+    }
+
+    .btn-text-tool {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 6px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .btn-text-tool:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-delete-queue {
+      color: #fca5a5 !important;
+    }
+    .btn-delete-queue:hover {
+      background: rgba(239, 68, 68, 0.15) !important;
+      color: #ef4444 !important;
+    }
+
+    /* Empty Queue State */
+    .queue-empty-state {
+      text-align: center;
+      padding: 40px 16px;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .empty-state-icon {
+      font-size: 32px;
+      opacity: 0.6;
+    }
+
+    .empty-state-title {
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .btn-empty-load {
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      color: #a5b4fc;
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-empty-load:hover {
+      background: var(--accent-indigo);
+      color: #fff;
+    }
+
+    /* Undo Toast Notification */
+    .undo-toast {
+      position: fixed;
+      bottom: 60px;
+      right: 24px;
+      background: #1e2332;
+      border: 1px solid #4f46e5;
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      z-index: 100;
+      transform: translateY(120%);
+      opacity: 0;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s;
+    }
+
+    .undo-toast.is-visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .btn-undo-action {
+      background: var(--accent-amber);
+      color: #000;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-weight: 800;
+      font-size: 11px;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+
+    .undo-progress-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: var(--accent-amber);
+      width: 100%;
+      border-bottom-left-radius: var(--radius-md);
+      border-bottom-right-radius: var(--radius-md);
+      transition: width 3s linear;
+    }
+
+    /* In-App Confirmation Modal */
+    .app-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .app-modal-backdrop.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .app-modal-card {
+      background: #141824;
+      border: 1px solid #2d3748;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      max-width: 440px;
+      width: 90%;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transform: scale(0.95);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .app-modal-backdrop.is-visible .app-modal-card {
+      transform: scale(1);
+    }
+
+    .modal-badge-danger {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+      padding: 3px 8px;
+      border-radius: 4px;
+      width: fit-content;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .app-modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .app-modal-body {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .app-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .btn-modal-cancel {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-modal-cancel:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+    }
+
+    .btn-modal-confirm-delete {
+      background: var(--accent-rose);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+      transition: all 0.2s;
+    }
+    .btn-modal-confirm-delete:hover {
+      background: var(--accent-rose-hover);
+    }
+
+    /* Bottom Bar: Thresholds & Hotkeys */
+    .settings-bar {
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border);
+      padding: 10px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .threshold-inputs {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .threshold-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .threshold-num {
+      width: 44px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .hotkey-pill {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin: 0 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">F</div>
+      <div>
+        <div class="brand-title">FOYCE Cue Timer</div>
+        <div class="brand-subtitle">Master Stage Controller & Run of Show</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="live-clock" id="liveClock">14:00:00</div>
+
+      <div class="stage-status" id="stageStatusBadge">
+        <div class="status-dot"></div>
+        <span id="stageStatusText">Stage Display Standby</span>
+      </div>
+
+      <button class="btn-launch-stage" id="btnLaunchStage" title="Open Stage Display Window">
+        <span>🚀</span> Open Stage Display
+      </button>
+    </div>
+  </header>
+
+  <!-- App Body Layout -->
+  <main class="app-container">
+    
+    <!-- Left Column: Active Cue Hero + Message Center -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <!-- Live Cue Hero Section (Single streamlined card) -->
+      <div class="panel hero-timer-panel" id="heroTimerPanel">
+        <div class="hero-top-bar">
+          <div class="cue-meta-group">
+            <span class="active-tag" id="heroCueTag">
+              <span>●</span> <span id="heroCueTagText">CURRENT CUE</span>
+            </span>
+            <span class="cue-position-pill" id="heroCuePositionPill">Cue 1 of 5</span>
+          </div>
+
+          <!-- Live Stage Message Pill -->
+          <div class="hero-live-msg-badge hidden" id="heroLiveMsgBadge">
+            <span>📢 STAGE MSG:</span>
+            <span id="heroLiveMsgText" style="color: #fff; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+            <button class="btn-hero-dismiss-msg" id="btnHeroDismissMsg" title="Dismiss message from stage">✕</button>
+          </div>
+
+          <div style="font-size: 12px; color: var(--text-muted);">
+            Target: 27" Stage Monitor
+          </div>
+        </div>
+
+        <!-- Cue Title -->
+        <div class="hero-title-container">
+          <input type="text" id="heroCueTitleInput" class="active-cue-input" value="Session Opening" title="Click to rename active cue">
+        </div>
+
+        <!-- Cue Notes Readout (Collapsed if empty) -->
+        <div class="hero-notes-card hidden" id="heroNotesCard">
+          <span class="hero-notes-icon">📝</span>
+          <span class="hero-notes-text" id="heroNotesText">Operator notes will appear here</span>
+        </div>
+
+        <!-- Big Digits & Elapsed row -->
+        <div class="hero-timer-display">
+          <div class="hero-timer-digits" id="heroTimerDigits">05:00</div>
+          <div class="hero-elapsed-badge" id="heroElapsedBadge">
+            <span class="hero-elapsed-dot"></span>
+            <span>Elapsed:</span>
+            <span id="heroElapsedDigits">00:00</span>
+          </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="hero-progress-track">
+          <div class="hero-progress-fill" id="heroProgressFill"></div>
+        </div>
+
+        <!-- Primary Control Buttons -->
+        <div class="timer-primary-controls">
+          <button class="btn-timer-primary btn-start" id="btnStartPause">
+            <span id="playPauseIcon">▶</span>
+            <span id="playPauseLabel">START</span>
+          </button>
+          <button class="btn-timer-primary btn-reset" id="btnReset" title="Reset current cue time">
+            <span>↺</span> RESET
+          </button>
+          <div class="controls-separator"></div>
+          <button class="btn-timer-primary btn-next-cue" id="btnAdvanceCue" title="Advance to next cue in queue">
+            <span>⏭</span> NEXT CUE
+          </button>
+        </div>
+
+        <!-- Quick Time Adjusters -->
+        <div class="quick-adjust-bar">
+          <button class="btn-pill" onclick="adjustActiveTime(-60)">-1m</button>
+          <button class="btn-pill" onclick="adjustActiveTime(-30)">-30s</button>
+          <button class="btn-pill" onclick="adjustActiveTime(30)">+30s</button>
+          <button class="btn-pill" onclick="adjustActiveTime(60)">+1m</button>
+          <button class="btn-pill" onclick="adjustActiveTime(300)">+5m</button>
+        </div>
+      </div>
+
+      <!-- Stage Message Center -->
+      <div class="panel message-center-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>💬</span> Direct Stage Overlay Message
+          </div>
+          <div class="msg-header-actions">
+            <button class="btn-preset-mode-toggle" id="btnToggleEditPresets" title="Customize quick message presets">
+              ✏️ Edit Presets
+            </button>
+            <button class="btn-flash-stage" id="btnFlashStage" title="Flash screen perimeter to grab speaker's attention">
+              ⚡ FLASH SCREEN
+            </button>
+          </div>
+        </div>
+
+        <!-- Active message banner -->
+        <div class="active-message-banner hidden" id="activeMessageBanner">
+          <div class="banner-text-group">
+            <span class="banner-badge">ON STAGE</span>
+            <span class="banner-content" id="activeMessageContent"></span>
+          </div>
+          <button class="btn-clear-msg" id="btnClearMessage">DISMISS</button>
+        </div>
+
+        <!-- Quick Preset Buttons Grid -->
+        <div class="msg-presets-grid" id="msgPresetsGrid">
+          <!-- Rendered dynamically with editable presets -->
+        </div>
+
+        <!-- Custom Message Input -->
+        <div class="custom-msg-bar">
+          <input type="text" class="input-msg" id="inputCustomMessage" placeholder="Type custom message to display on stage (Press Enter to send)...">
+          <button class="btn-send-msg" id="btnSendCustomMsg">
+            <span>SEND</span> ➔
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Cue Queue Manager -->
+    <div class="panel queue-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>📋</span> Run of Show / Queue
+        </div>
+        <div class="queue-header-stats">
+          <span class="queue-run-time-badge" id="queueTotalRuntimeBadge">Total: --</span>
+          <span style="font-size: 12px; color: var(--text-muted);" id="queueCounter">0 cues</span>
+        </div>
+      </div>
+
+      <!-- Add Cue Box -->
+      <div class="queue-add-box">
+        <div class="form-group-title">
+          <label class="input-label">Cue Title</label>
+          <input type="text" class="input-text" id="inputNewTitle" placeholder="e.g. Worship & Praise / Sermon">
+        </div>
+
+        <div class="form-group-title">
+          <label class="input-label">Duration</label>
+          <div class="duration-input-row">
+            <div class="duration-box">
+              <input type="number" class="duration-num" id="inputNewMinutes" value="5" min="0" max="999">
+              <span class="duration-unit">MIN</span>
+            </div>
+            <span style="color: var(--text-muted); font-weight: bold;">:</span>
+            <div class="duration-box">
+              <input type="number" class="duration-num" id="inputNewSeconds" value="0" min="0" max="59" step="5">
+              <span class="duration-unit">SEC</span>
+            </div>
+          </div>
+
+          <div class="preset-duration-pills">
+            <span class="pill-sm" onclick="setAddDuration(3, 0)">3m</span>
+            <span class="pill-sm" onclick="setAddDuration(5, 0)">5m</span>
+            <span class="pill-sm" onclick="setAddDuration(10, 0)">10m</span>
+            <span class="pill-sm" onclick="setAddDuration(15, 0)">15m</span>
+            <span class="pill-sm" onclick="setAddDuration(20, 0)">20m</span>
+            <span class="pill-sm" onclick="setAddDuration(30, 0)">30m</span>
+            <span class="pill-sm" onclick="setAddDuration(45, 0)">45m</span>
+          </div>
+        </div>
+
+        <button class="btn-add-cue" id="btnAddCue">
+          <span>+</span> ADD TO QUEUE
+        </button>
+      </div>
+
+      <!-- Cue List Table -->
+      <div class="queue-list" id="queueListContainer">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Queue Projected Finish Summary Bar -->
+      <div class="queue-summary-box" id="queueSummaryBox">
+        <div class="queue-summary-text">
+          <span>🏁 Projected Finish:</span>
+          <span class="queue-summary-val" id="queueProjectedFinishVal">--:--:--</span>
+        </div>
+        <div class="queue-summary-text">
+          <span>Remaining:</span>
+          <span class="queue-summary-val" id="queueRemainingVal">--:--</span>
+        </div>
+      </div>
+
+      <!-- Queue Bulk Controls -->
+      <div class="queue-footer">
+        <button class="btn-text-tool" id="btnLoadDefaults">Load Sample FOYCE Run</button>
+        <button class="btn-text-tool btn-delete-queue" id="btnClearQueue">
+          <span>🗑</span> Delete Entire Queue
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Floating Undo Toast -->
+  <div class="undo-toast" id="undoToast">
+    <span id="undoToastText">Advanced to next cue</span>
+    <button class="btn-undo-action" id="btnUndoAdvance">UNDO (4s)</button>
+    <div class="undo-progress-bar" id="undoProgressBar"></div>
+  </div>
+
+  <!-- In-App Confirmation Modal (Delete Queue) -->
+  <div class="app-modal-backdrop" id="appModalBackdrop">
+    <div class="app-modal-card">
+      <div class="modal-badge-danger">⚠️ DANGER ZONE</div>
+      <div class="app-modal-title">Delete Entire Queue?</div>
+      <div class="app-modal-body">
+        Are you sure you want to delete all <strong id="modalCueCount" style="color: #fff;">5</strong> cues in your run of show?
+        <br><br>
+        <span style="font-size: 12px; color: var(--text-muted);">You can also click "Load Sample FOYCE Run" at any time to restore the default sequence.</span>
+      </div>
+      <div class="app-modal-actions">
+        <button class="btn-modal-cancel" id="btnModalCancel">Cancel</button>
+        <button class="btn-modal-confirm-delete" id="btnModalConfirmDelete">Yes, Delete All Cues</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Bar: Thresholds & Hotkeys -->
+  <footer class="settings-bar">
+    <div class="threshold-inputs">
+      <div class="threshold-item">
+        <span>⚠️ Warning (Yellow):</span>
+        <input type="number" class="threshold-num" id="inputWarningThreshold" value="60" min="5" max="3600">
+        <span>sec</span>
+      </div>
+      <div class="threshold-item">
+        <span>🚨 Critical (Red):</span>
+        <input type="number" class="threshold-num" id="inputCriticalThreshold" value="30" min="1" max="3600">
+        <span>sec</span>
+      </div>
+    </div>
+
+    <div>
+      Shortcuts: <span class="hotkey-pill">Space</span> Play/Pause &nbsp;
+      <span class="hotkey-pill">N</span> Next Cue &nbsp;
+      <span class="hotkey-pill">R</span> Reset &nbsp;
+      <span class="hotkey-pill">F</span> Flash Stage &nbsp;
+      <span class="hotkey-pill">Esc</span> Clear Msg
+    </div>
+  </footer>
+
+  <script>
+    // Constants & Channels
+    const CHANNEL_NAME = 'foyce-cue-timer-channel';
+    const STORAGE_KEY = 'foyce_cue_timer_state';
+    const QUEUE_STORAGE_KEY = 'foyce_cue_queue_list';
+    const PRESETS_STORAGE_KEY = 'foyce_msg_presets';
+    const channel = new BroadcastChannel(CHANNEL_NAME);
+
+    // Initial Default Cues
+    const DEFAULT_CUES = [
+      { id: 'c1', title: 'Opening & Welcome', duration: 180, tag: 'INTRO', notes: 'Welcome attendees, housekeeping rules.' },
+      { id: 'c2', title: 'Worship & Praise', duration: 1200, tag: 'WORSHIP', notes: 'Worship band leads 4 songs.' },
+      { id: 'c3', title: 'Main Keynote Session', duration: 1800, tag: 'KEYNOTE', notes: 'Keynote Speaker. Flash perimeter at 1 min.' },
+      { id: 'c4', title: 'Q&A / Discussion', duration: 600, tag: 'Q&A', notes: 'Floor mic open for audience.' },
+      { id: 'c5', title: 'Closing Announcements', duration: 300, tag: 'OUTRO', notes: 'Wrap-up and dismissal to lunch.' }
+    ];
+
+    const DEFAULT_MSG_PRESETS = [
+      'WRAP UP PLEASE',
+      '2 MINUTES REMAINING',
+      '1 MINUTE — WRAP UP',
+      'SPEAK INTO MIC',
+      'CHECK MONITOR',
+      'TIME IS UP'
+    ];
+
+    // Master App State
+    let queue = [];
+    let msgPresets = [];
+    let isEditingPresets = false;
+    let activeCueIndex = 0;
+    let isRunning = false;
+    let remainingSeconds = 300;
+    let totalSeconds = 300;
+    let elapsedSeconds = 0;
+    let timerInterval = null;
+    let warningThreshold = 60;
+    let criticalThreshold = 30;
+
+    let stageMessage = {
+      text: '',
+      visible: false,
+      timestamp: 0
+    };
+
+    let lastPongReceived = 0;
+
+    // Undo Snapshot State for NEXT CUE
+    let undoSnapshot = null;
+    let undoTimeout = null;
+    let undoCountdownInterval = null;
+
+    // Currently opened inline cue edit index (null if none)
+    let openEditCueIndex = null;
+
+    // DOM Elements
+    const liveClock = document.getElementById('liveClock');
+    const stageStatusBadge = document.getElementById('stageStatusBadge');
+    const stageStatusText = document.getElementById('stageStatusText');
+    const btnLaunchStage = document.getElementById('btnLaunchStage');
+
+    const heroTimerPanel = document.getElementById('heroTimerPanel');
+    const heroCueTag = document.getElementById('heroCueTag');
+    const heroCueTagText = document.getElementById('heroCueTagText');
+    const heroCuePositionPill = document.getElementById('heroCuePositionPill');
+    const heroLiveMsgBadge = document.getElementById('heroLiveMsgBadge');
+    const heroLiveMsgText = document.getElementById('heroLiveMsgText');
+    const btnHeroDismissMsg = document.getElementById('btnHeroDismissMsg');
+    const heroCueTitleInput = document.getElementById('heroCueTitleInput');
+    const heroNotesCard = document.getElementById('heroNotesCard');
+    const heroNotesText = document.getElementById('heroNotesText');
+    const heroTimerDigits = document.getElementById('heroTimerDigits');
+    const heroElapsedBadge = document.getElementById('heroElapsedBadge');
+    const heroElapsedDigits = document.getElementById('heroElapsedDigits');
+    const heroProgressFill = document.getElementById('heroProgressFill');
+
+    const btnStartPause = document.getElementById('btnStartPause');
+    const playPauseIcon = document.getElementById('playPauseIcon');
+    const playPauseLabel = document.getElementById('playPauseLabel');
+    const btnReset = document.getElementById('btnReset');
+    const btnAdvanceCue = document.getElementById('btnAdvanceCue');
+
+    const activeMessageBanner = document.getElementById('activeMessageBanner');
+    const activeMessageContent = document.getElementById('activeMessageContent');
+    const btnClearMessage = document.getElementById('btnClearMessage');
+    const inputCustomMessage = document.getElementById('inputCustomMessage');
+    const btnSendCustomMsg = document.getElementById('btnSendCustomMsg');
+    const btnFlashStage = document.getElementById('btnFlashStage');
+    const msgPresetsGrid = document.getElementById('msgPresetsGrid');
+    const btnToggleEditPresets = document.getElementById('btnToggleEditPresets');
+
+    const queueListContainer = document.getElementById('queueListContainer');
+    const queueCounter = document.getElementById('queueCounter');
+    const queueTotalRuntimeBadge = document.getElementById('queueTotalRuntimeBadge');
+    const queueProjectedFinishVal = document.getElementById('queueProjectedFinishVal');
+    const queueRemainingVal = document.getElementById('queueRemainingVal');
+    const inputNewTitle = document.getElementById('inputNewTitle');
+    const inputNewMinutes = document.getElementById('inputNewMinutes');
+    const inputNewSeconds = document.getElementById('inputNewSeconds');
+    const btnAddCue = document.getElementById('btnAddCue');
+    const btnLoadDefaults = document.getElementById('btnLoadDefaults');
+    const btnClearQueue = document.getElementById('btnClearQueue');
+
+    const undoToast = document.getElementById('undoToast');
+    const undoToastText = document.getElementById('undoToastText');
+    const btnUndoAdvance = document.getElementById('btnUndoAdvance');
+    const undoProgressBar = document.getElementById('undoProgressBar');
+
+    const appModalBackdrop = document.getElementById('appModalBackdrop');
+    const modalCueCount = document.getElementById('modalCueCount');
+    const btnModalCancel = document.getElementById('btnModalCancel');
+    const btnModalConfirmDelete = document.getElementById('btnModalConfirmDelete');
+
+    const inputWarningThreshold = document.getElementById('inputWarningThreshold');
+    const inputCriticalThreshold = document.getElementById('inputCriticalThreshold');
+
+    // Utility: Format Seconds
+    function formatTime(totalSec) {
+      if (totalSec < 0) totalSec = 0;
+      const hours = Math.floor(totalSec / 3600);
+      const minutes = Math.floor((totalSec % 3600) / 60);
+      const seconds = Math.floor(totalSec % 60);
+
+      const mm = String(minutes).padStart(2, '0');
+      const ss = String(seconds).padStart(2, '0');
+
+      if (hours > 0) {
+        return `${hours}:${mm}:${ss}`;
+      }
+      return `${mm}:${ss}`;
+    }
+
+    function formatDurationHuman(totalSec) {
+      if (totalSec <= 0) return '0m';
+      const hours = Math.floor(totalSec / 3600);
+      const minutes = Math.floor((totalSec % 3600) / 60);
+      if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+      }
+      return `${minutes}m`;
+    }
+
+    // Build Current State Payload for Broadcast & Storage
+    function getBroadcastState() {
+      const activeCue = queue[activeCueIndex] || {
+        id: 'manual',
+        title: heroCueTitleInput.value || 'Stage Session',
+        duration: totalSeconds,
+        tag: 'CUE'
+      };
+
+      const nextCue = queue[activeCueIndex + 1] || null;
+
+      return {
+        activeCue: {
+          id: activeCue.id,
+          title: heroCueTitleInput.value || activeCue.title,
+          tag: activeCue.tag || 'CUE',
+          totalSeconds: totalSeconds,
+          remainingSeconds: remainingSeconds,
+          isRunning: isRunning
+        },
+        nextCue: nextCue ? {
+          title: nextCue.title,
+          duration: nextCue.duration
+        } : null,
+        message: stageMessage,
+        thresholds: {
+          warning: warningThreshold,
+          critical: criticalThreshold
+        },
+        lastUpdate: Date.now()
+      };
+    }
+
+    // Broadcast State to Stage Display & save in LocalStorage
+    function syncState() {
+      const state = getBroadcastState();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      channel.postMessage({ type: 'STATE_SYNC', data: state });
+    }
+
+    // Render Controller UI
+    function renderController() {
+      // 1. Digits
+      heroTimerDigits.textContent = formatTime(remainingSeconds);
+
+      // 2. Play/Pause Button styling
+      if (isRunning) {
+        btnStartPause.className = 'btn-timer-primary btn-pause';
+        playPauseIcon.textContent = '⏸';
+        playPauseLabel.textContent = 'PAUSE';
+      } else {
+        btnStartPause.className = 'btn-timer-primary btn-start';
+        playPauseIcon.textContent = '▶';
+        playPauseLabel.textContent = 'START';
+      }
+
+      // 3. Progress fill
+      if (totalSeconds > 0) {
+        const percent = Math.max(0, Math.min(100, (remainingSeconds / totalSeconds) * 100));
+        heroProgressFill.style.width = `${percent}%`;
+      } else {
+        heroProgressFill.style.width = '0%';
+      }
+
+      // 4. Elapsed Time Badge (User preference: Show elapsed only when timer is running or active)
+      if (isRunning || elapsedSeconds > 0) {
+        heroElapsedDigits.textContent = formatTime(elapsedSeconds);
+        heroElapsedBadge.classList.add('is-visible');
+      } else {
+        heroElapsedBadge.classList.remove('is-visible');
+      }
+
+      // 5. State class for Hero Panel
+      heroTimerPanel.classList.remove('state-running', 'state-warning', 'state-critical', 'state-finished');
+      if (remainingSeconds === 0 && totalSeconds > 0) {
+        heroTimerPanel.classList.add('state-finished');
+      } else if (remainingSeconds <= criticalThreshold && remainingSeconds > 0) {
+        heroTimerPanel.classList.add('state-critical');
+      } else if (remainingSeconds <= warningThreshold && remainingSeconds > 0) {
+        heroTimerPanel.classList.add('state-warning');
+      } else if (isRunning) {
+        heroTimerPanel.classList.add('state-running');
+      }
+
+      // 6. Active Cue Meta & Notes
+      if (queue.length > 0 && queue[activeCueIndex]) {
+        const cur = queue[activeCueIndex];
+        heroCuePositionPill.textContent = `Cue ${activeCueIndex + 1} of ${queue.length}`;
+        heroCueTagText.textContent = cur.tag || `CUE ${activeCueIndex + 1}`;
+        if (cur.notes && cur.notes.trim()) {
+          heroNotesText.textContent = cur.notes;
+          heroNotesCard.classList.remove('hidden');
+        } else {
+          heroNotesCard.classList.add('hidden');
+        }
+      } else {
+        heroCuePositionPill.textContent = 'No Cue Active';
+        heroCueTagText.textContent = 'STANDBY';
+        heroNotesCard.classList.add('hidden');
+      }
+
+      // 7. Active Message Banners
+      if (stageMessage.visible && stageMessage.text.trim()) {
+        activeMessageContent.textContent = stageMessage.text;
+        activeMessageBanner.classList.remove('hidden');
+
+        heroLiveMsgText.textContent = `"${stageMessage.text}"`;
+        heroLiveMsgBadge.classList.remove('hidden');
+      } else {
+        activeMessageBanner.classList.add('hidden');
+        heroLiveMsgBadge.classList.add('hidden');
+      }
+
+      // 8. Queue List and Summary
+      renderQueue();
+      updateQueueCalculations();
+    }
+
+    // Render Message Presets Grid
+    function renderMessagePresets() {
+      msgPresetsGrid.innerHTML = '';
+      msgPresets.forEach((presetText, idx) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'preset-chip-wrapper';
+
+        const btn = document.createElement('button');
+        btn.className = 'btn-msg-preset';
+        btn.textContent = presetText;
+        btn.title = `Send "${presetText}" to stage`;
+        btn.onclick = () => {
+          if (isEditingPresets) {
+            editPreset(idx);
+          } else {
+            sendQuickMessage(presetText);
+          }
+        };
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn-edit-preset-chip';
+        editBtn.innerHTML = '✏️';
+        editBtn.title = 'Edit preset text';
+        editBtn.onclick = (e) => {
+          e.stopPropagation();
+          editPreset(idx);
+        };
+
+        wrapper.appendChild(btn);
+        wrapper.appendChild(editBtn);
+        msgPresetsGrid.appendChild(wrapper);
+      });
+    }
+
+    function editPreset(idx) {
+      const current = msgPresets[idx];
+      const updated = prompt('Edit quick message preset:', current);
+      if (updated !== null && updated.trim()) {
+        msgPresets[idx] = updated.trim();
+        savePresetsToStorage();
+        renderMessagePresets();
+      }
+    }
+
+    function savePresetsToStorage() {
+      localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(msgPresets));
+    }
+
+    function loadPresetsFromStorage() {
+      try {
+        const stored = localStorage.getItem(PRESETS_STORAGE_KEY);
+        if (stored) {
+          msgPresets = JSON.parse(stored);
+        } else {
+          msgPresets = [...DEFAULT_MSG_PRESETS];
+          savePresetsToStorage();
+        }
+      } catch (e) {
+        msgPresets = [...DEFAULT_MSG_PRESETS];
+      }
+      renderMessagePresets();
+    }
+
+    // Render Queue Items List
+    function renderQueue() {
+      queueCounter.textContent = `${queue.length} cue${queue.length === 1 ? '' : 's'}`;
+      queueListContainer.innerHTML = '';
+
+      if (queue.length === 0) {
+        queueListContainer.innerHTML = `
+          <div class="queue-empty-state">
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-title">Your queue is empty</div>
+            <p style="font-size: 12px; max-width: 260px;">Add your first session cue above or load the sample FOYCE run-of-show.</p>
+            <button class="btn-empty-load" onclick="loadSampleRun()">Load Sample FOYCE Run</button>
+          </div>
+        `;
+        return;
+      }
+
+      queue.forEach((item, index) => {
+        const isCurrent = index === activeCueIndex;
+        const isNext = index === activeCueIndex + 1;
+        const isEditingThis = openEditCueIndex === index;
+
+        const card = document.createElement('div');
+        card.className = `queue-item-card ${isCurrent ? 'is-active' : ''}`;
+
+        let badgeHtml = '';
+        if (isCurrent) {
+          badgeHtml = `<span class="queue-badge badge-active">ACTIVE</span>`;
+        } else if (isNext) {
+          badgeHtml = `<span class="queue-badge badge-next">NEXT</span>`;
+        }
+
+        const notesIndicator = item.notes && item.notes.trim() 
+          ? `<span class="queue-notes-indicator" title="Has notes: ${escapeHtml(item.notes)}">📝</span>` 
+          : '';
+
+        // Row Markup
+        card.innerHTML = `
+          <div class="queue-item-row">
+            <div class="queue-item-left">
+              <div class="queue-item-title">${escapeHtml(item.title)}</div>
+              <div class="queue-item-meta">
+                ${badgeHtml}
+                <span class="queue-duration">${formatTime(item.duration)}</span>
+                ${item.tag ? `<span style="font-size: 10px; opacity: 0.6;">#${escapeHtml(item.tag)}</span>` : ''}
+                ${notesIndicator}
+              </div>
+            </div>
+            <div class="queue-item-actions">
+              ${!isCurrent ? `
+                <button class="btn-icon play-btn" onclick="activateCue(${index})" title="Make Active Now">▶</button>
+              ` : ''}
+              <button class="btn-icon edit-btn" onclick="toggleEditCueDrawer(${index})" title="Edit Cue (Title, Time, Notes)">✏️</button>
+              <button class="btn-icon" onclick="moveCue(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.25;"' : ''} title="Move Up">↑</button>
+              <button class="btn-icon" onclick="moveCue(${index}, 1)" ${index === queue.length - 1 ? 'disabled style="opacity:0.25;"' : ''} title="Move Down">↓</button>
+              <button class="btn-icon delete-btn" onclick="deleteCue(${index})" title="Delete Cue">✕</button>
+            </div>
+          </div>
+
+          <!-- Slide-down Inline Edit Drawer -->
+          <div class="queue-edit-drawer ${isEditingThis ? 'is-open' : ''}" id="editDrawer_${index}">
+            <div class="form-group-title">
+              <label class="input-label">Cue Title</label>
+              <input type="text" class="input-text" id="editTitle_${index}" value="${escapeHtml(item.title)}">
+            </div>
+
+            <div class="edit-drawer-row">
+              <div class="form-group-title" style="flex: 1;">
+                <label class="input-label">Tag (Category)</label>
+                <input type="text" class="input-text" id="editTag_${index}" value="${escapeHtml(item.tag || '')}" placeholder="e.g. WORSHIP">
+              </div>
+              <div class="form-group-title" style="flex: 1;">
+                <label class="input-label">Duration (Min : Sec)</label>
+                <div class="duration-input-row">
+                  <div class="duration-box">
+                    <input type="number" class="duration-num" id="editMins_${index}" value="${Math.floor(item.duration / 60)}" min="0" max="999">
+                    <span class="duration-unit">M</span>
+                  </div>
+                  <span style="color: var(--text-muted);">:</span>
+                  <div class="duration-box">
+                    <input type="number" class="duration-num" id="editSecs_${index}" value="${item.duration % 60}" min="0" max="59">
+                    <span class="duration-unit">S</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group-title">
+              <label class="input-label">Speaker / Cue Notes (Operator only)</label>
+              <textarea class="input-text" id="editNotes_${index}" rows="2" placeholder="Private notes for operator/stage tech..." style="resize: vertical; font-family: inherit;">${escapeHtml(item.notes || '')}</textarea>
+            </div>
+
+            <div class="edit-drawer-actions">
+              <button class="btn-drawer-cancel" onclick="closeEditCueDrawer()">Cancel</button>
+              <button class="btn-drawer-save" onclick="saveInlineCueEdit(${index})">Save Changes</button>
+            </div>
+          </div>
+        `;
+
+        queueListContainer.appendChild(card);
+      });
+    }
+
+    function toggleEditCueDrawer(index) {
+      if (openEditCueIndex === index) {
+        openEditCueIndex = null;
+      } else {
+        openEditCueIndex = index;
+      }
+      renderQueue();
+    }
+
+    function closeEditCueDrawer() {
+      openEditCueIndex = null;
+      renderQueue();
+    }
+
+    function saveInlineCueEdit(index) {
+      if (!queue[index]) return;
+
+      const titleInput = document.getElementById(`editTitle_${index}`);
+      const tagInput = document.getElementById(`editTag_${index}`);
+      const minsInput = document.getElementById(`editMins_${index}`);
+      const secsInput = document.getElementById(`editSecs_${index}`);
+      const notesInput = document.getElementById(`editNotes_${index}`);
+
+      const newTitle = titleInput ? titleInput.value.trim() : queue[index].title;
+      const newTag = tagInput ? tagInput.value.trim() : (queue[index].tag || '');
+      const mins = minsInput ? (parseInt(minsInput.value, 10) || 0) : 0;
+      const secs = secsInput ? (parseInt(secsInput.value, 10) || 0) : 0;
+      const newDuration = Math.max(5, (mins * 60) + secs);
+      const newNotes = notesInput ? notesInput.value.trim() : '';
+
+      queue[index].title = newTitle || 'Untitled Cue';
+      queue[index].tag = newTag;
+      queue[index].notes = newNotes;
+
+      // If duration changed and this is the active cue, handle timer adjustments
+      if (index === activeCueIndex) {
+        heroCueTitleInput.value = queue[index].title;
+        if (queue[index].duration !== newDuration) {
+          queue[index].duration = newDuration;
+          totalSeconds = newDuration;
+          remainingSeconds = newDuration;
+          elapsedSeconds = 0;
+        }
+      } else {
+        queue[index].duration = newDuration;
+      }
+
+      saveQueueToStorage();
+      openEditCueIndex = null;
+      renderController();
+      syncState();
+    }
+
+    // Queue Runtime & Projected Finish Calculation
+    function updateQueueCalculations() {
+      if (queue.length === 0) {
+        queueTotalRuntimeBadge.textContent = 'Total: 0m';
+        queueRemainingVal.textContent = '00:00';
+        queueProjectedFinishVal.textContent = '--:--:--';
+        return;
+      }
+
+      // Total queue time from all items
+      let fullShowSeconds = 0;
+      queue.forEach(item => { fullShowSeconds += item.duration; });
+      queueTotalRuntimeBadge.textContent = `Total: ${formatDurationHuman(fullShowSeconds)}`;
+
+      // Remaining queue time = remaining on active cue + full duration of all subsequent cues
+      let remainingShowSeconds = remainingSeconds;
+      for (let i = activeCueIndex + 1; i < queue.length; i++) {
+        remainingShowSeconds += queue[i].duration;
+      }
+
+      queueRemainingVal.textContent = formatTime(remainingShowSeconds);
+
+      // Projected Finish Wall Clock
+      const now = new Date();
+      const finishTime = new Date(now.getTime() + (remainingShowSeconds * 1000));
+      queueProjectedFinishVal.textContent = finishTime.toTimeString().split(' ')[0];
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    // Timer Tick
+    function tick() {
+      if (!isRunning) return;
+
+      if (remainingSeconds > 0) {
+        remainingSeconds--;
+        elapsedSeconds++;
+        renderController();
+        syncState();
+      } else {
+        remainingSeconds = 0;
+        isRunning = false;
+        clearInterval(timerInterval);
+        renderController();
+        syncState();
+      }
+    }
+
+    function startTimer() {
+      if (isRunning) return;
+      isRunning = true;
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(tick, 1000);
+      renderController();
+      syncState();
+    }
+
+    function pauseTimer() {
+      if (!isRunning) return;
+      isRunning = false;
+      if (timerInterval) clearInterval(timerInterval);
+      renderController();
+      syncState();
+    }
+
+    function togglePlayPause() {
+      if (isRunning) {
+        pauseTimer();
+      } else {
+        startTimer();
+      }
+    }
+
+    function resetTimer() {
+      pauseTimer();
+      elapsedSeconds = 0;
+      const currentCue = queue[activeCueIndex];
+      if (currentCue) {
+        remainingSeconds = currentCue.duration;
+        totalSeconds = currentCue.duration;
+      } else {
+        remainingSeconds = totalSeconds;
+      }
+      renderController();
+      syncState();
+    }
+
+    function adjustActiveTime(secondsDelta) {
+      remainingSeconds = Math.max(0, remainingSeconds + secondsDelta);
+      if (remainingSeconds > totalSeconds) {
+        totalSeconds = remainingSeconds;
+      }
+      renderController();
+      syncState();
+    }
+
+    // Activate specific cue
+    function activateCue(index) {
+      if (index < 0 || index >= queue.length) return;
+      pauseTimer();
+      activeCueIndex = index;
+      elapsedSeconds = 0;
+      const cue = queue[index];
+      heroCueTitleInput.value = cue.title;
+      totalSeconds = cue.duration;
+      remainingSeconds = cue.duration;
+      renderController();
+      syncState();
+    }
+
+    // Advance to next cue in queue with Undo Toast
+    function advanceToNextCue() {
+      if (activeCueIndex < queue.length - 1) {
+        undoSnapshot = {
+          type: 'ADVANCE_CUE',
+          activeCueIndex: activeCueIndex,
+          remainingSeconds: remainingSeconds,
+          totalSeconds: totalSeconds,
+          elapsedSeconds: elapsedSeconds,
+          isRunning: isRunning,
+          title: heroCueTitleInput.value
+        };
+
+        const nextIndex = activeCueIndex + 1;
+        const nextCueTitle = queue[nextIndex].title;
+        activateCue(nextIndex);
+
+        showUndoToast(`⏭ Advanced to "${nextCueTitle}"`, 4);
+      } else {
+        showUndoToast("🏁 End of cue queue reached", 3, false);
+      }
+    }
+
+    function showUndoToast(msg, durationSec = 4, showUndoBtn = true) {
+      undoToastText.textContent = msg;
+      btnUndoAdvance.style.display = showUndoBtn ? 'inline-block' : 'none';
+      undoToast.classList.add('is-visible');
+
+      undoProgressBar.style.transition = 'none';
+      undoProgressBar.style.width = '100%';
+
+      if (undoTimeout) clearTimeout(undoTimeout);
+      if (undoCountdownInterval) clearInterval(undoCountdownInterval);
+
+      // Trigger bar animation
+      requestAnimationFrame(() => {
+        undoProgressBar.style.transition = `width ${durationSec}s linear`;
+        undoProgressBar.style.width = '0%';
+      });
+
+      let timeLeft = durationSec;
+      btnUndoAdvance.textContent = `UNDO (${timeLeft}s)`;
+
+      undoCountdownInterval = setInterval(() => {
+        timeLeft--;
+        if (timeLeft > 0) {
+          btnUndoAdvance.textContent = `UNDO (${timeLeft}s)`;
+        } else {
+          clearInterval(undoCountdownInterval);
+        }
+      }, 1000);
+
+      undoTimeout = setTimeout(() => {
+        dismissUndoToast();
+      }, durationSec * 1000);
+    }
+
+    function dismissUndoToast() {
+      undoToast.classList.remove('is-visible');
+      if (undoTimeout) clearTimeout(undoTimeout);
+      if (undoCountdownInterval) clearInterval(undoCountdownInterval);
+      undoSnapshot = null;
+    }
+
+    function performUndo() {
+      if (!undoSnapshot) return;
+
+      if (undoSnapshot.type === 'DELETE_CUE') {
+        const { item, index, wasActive, prevActiveIndex } = undoSnapshot;
+        queue.splice(index, 0, item);
+        saveQueueToStorage();
+        if (wasActive) {
+          activateCue(index);
+        } else {
+          activeCueIndex = prevActiveIndex;
+          renderController();
+          syncState();
+        }
+      } else if (undoSnapshot.type === 'DELETE_QUEUE') {
+        queue = undoSnapshot.previousQueue;
+        activeCueIndex = undoSnapshot.previousActiveIndex;
+        totalSeconds = undoSnapshot.previousTotalSeconds;
+        remainingSeconds = undoSnapshot.previousRemainingSeconds;
+        elapsedSeconds = undoSnapshot.previousElapsedSeconds;
+        saveQueueToStorage();
+        if (queue[activeCueIndex]) {
+          heroCueTitleInput.value = queue[activeCueIndex].title;
+        }
+        if (undoSnapshot.previousRunning) {
+          startTimer();
+        } else {
+          renderController();
+          syncState();
+        }
+      } else if (undoSnapshot.type === 'ADVANCE_CUE') {
+        pauseTimer();
+        activeCueIndex = undoSnapshot.activeCueIndex;
+        remainingSeconds = undoSnapshot.remainingSeconds;
+        totalSeconds = undoSnapshot.totalSeconds;
+        elapsedSeconds = undoSnapshot.elapsedSeconds;
+        heroCueTitleInput.value = undoSnapshot.title;
+
+        if (undoSnapshot.isRunning) {
+          startTimer();
+        } else {
+          renderController();
+          syncState();
+        }
+      } else if (undoSnapshot.type === 'LOAD_SAMPLE') {
+        queue = undoSnapshot.previousQueue;
+        activeCueIndex = undoSnapshot.previousActiveIndex;
+        saveQueueToStorage();
+        if (queue.length > 0) {
+          activateCue(activeCueIndex);
+        } else {
+          renderController();
+          syncState();
+        }
+      }
+
+      dismissUndoToast();
+    }
+
+    // Queue Management
+    function addCue() {
+      const title = inputNewTitle.value.trim() || `Cue ${queue.length + 1}`;
+      const mins = parseInt(inputNewMinutes.value, 10) || 0;
+      const secs = parseInt(inputNewSeconds.value, 10) || 0;
+      const duration = (mins * 60) + secs;
+
+      if (duration <= 0) {
+        showUndoToast("⚠️ Duration must be greater than 0s", 3, false);
+        return;
+      }
+
+      const newCue = {
+        id: 'cue_' + Date.now(),
+        title: title,
+        duration: duration,
+        tag: 'STAGE',
+        notes: ''
+      };
+
+      queue.push(newCue);
+      saveQueueToStorage();
+      inputNewTitle.value = '';
+
+      if (queue.length === 1) {
+        activateCue(0);
+      } else {
+        renderController();
+        syncState();
+      }
+    }
+
+    // Delete single cue: Instant deletion with Undo Toast (No blocking confirm dialog)
+    function deleteCue(index) {
+      if (index < 0 || index >= queue.length) return;
+
+      const deletedItem = queue[index];
+      const wasActive = index === activeCueIndex;
+      const prevActiveIndex = activeCueIndex;
+
+      // Save for Undo
+      undoSnapshot = {
+        type: 'DELETE_CUE',
+        item: { ...deletedItem },
+        index: index,
+        wasActive: wasActive,
+        prevActiveIndex: prevActiveIndex,
+        remainingSeconds: remainingSeconds,
+        totalSeconds: totalSeconds,
+        elapsedSeconds: elapsedSeconds,
+        isRunning: isRunning
+      };
+
+      queue.splice(index, 1);
+      saveQueueToStorage();
+
+      if (queue.length === 0) {
+        activeCueIndex = 0;
+        totalSeconds = 300;
+        remainingSeconds = 300;
+        elapsedSeconds = 0;
+        heroCueTitleInput.value = "Standby for Session";
+      } else if (wasActive) {
+        activeCueIndex = Math.min(index, queue.length - 1);
+        activateCue(activeCueIndex);
+      } else if (index < activeCueIndex) {
+        activeCueIndex--;
+      }
+
+      // Close inline edit if that was open
+      if (openEditCueIndex === index) {
+        openEditCueIndex = null;
+      } else if (openEditCueIndex !== null && openEditCueIndex > index) {
+        openEditCueIndex--;
+      }
+
+      renderController();
+      syncState();
+
+      showUndoToast(`🗑 Deleted "${deletedItem.title}"`, 5, true);
+    }
+
+    // In-App Modal Dialog for Deleting Entire Queue
+    function openDeleteQueueModal() {
+      if (queue.length === 0) {
+        showUndoToast("Queue is already empty", 3, false);
+        return;
+      }
+      modalCueCount.textContent = `${queue.length}`;
+      appModalBackdrop.classList.add('is-visible');
+    }
+
+    function closeDeleteQueueModal() {
+      appModalBackdrop.classList.remove('is-visible');
+    }
+
+    function confirmDeleteAllCues() {
+      // Save full previous queue for Undo
+      undoSnapshot = {
+        type: 'DELETE_QUEUE',
+        previousQueue: JSON.parse(JSON.stringify(queue)),
+        previousActiveIndex: activeCueIndex,
+        previousRemainingSeconds: remainingSeconds,
+        previousTotalSeconds: totalSeconds,
+        previousElapsedSeconds: elapsedSeconds,
+        previousRunning: isRunning
+      };
+
+      pauseTimer();
+      queue = [];
+      activeCueIndex = 0;
+      totalSeconds = 300;
+      remainingSeconds = 300;
+      elapsedSeconds = 0;
+      heroCueTitleInput.value = "Standby for Session";
+      openEditCueIndex = null;
+
+      saveQueueToStorage();
+      closeDeleteQueueModal();
+      renderController();
+      syncState();
+
+      showUndoToast("🗑 Entire queue deleted", 5, true);
+    }
+
+    function moveCue(index, direction) {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= queue.length) return;
+
+      const item = queue.splice(index, 1)[0];
+      queue.splice(targetIndex, 0, item);
+
+      // Track active index shifts
+      if (index === activeCueIndex) {
+        activeCueIndex = targetIndex;
+      } else if (index < activeCueIndex && targetIndex >= activeCueIndex) {
+        activeCueIndex--;
+      } else if (index > activeCueIndex && targetIndex <= activeCueIndex) {
+        activeCueIndex++;
+      }
+
+      saveQueueToStorage();
+      renderController();
+      syncState();
+    }
+
+    function setAddDuration(mins, secs) {
+      inputNewMinutes.value = mins;
+      inputNewSeconds.value = secs;
+    }
+
+    function saveQueueToStorage() {
+      localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
+    }
+
+    function loadQueueFromStorage() {
+      try {
+        const stored = localStorage.getItem(QUEUE_STORAGE_KEY);
+        if (stored) {
+          queue = JSON.parse(stored);
+        } else {
+          queue = JSON.parse(JSON.stringify(DEFAULT_CUES));
+          saveQueueToStorage();
+        }
+      } catch (e) {
+        queue = JSON.parse(JSON.stringify(DEFAULT_CUES));
+      }
+
+      if (queue.length > 0) {
+        activeCueIndex = 0;
+        heroCueTitleInput.value = queue[0].title;
+        totalSeconds = queue[0].duration;
+        remainingSeconds = queue[0].duration;
+      }
+    }
+
+    // Load sample FOYCE run with instant undo capability
+    function loadSampleRun() {
+      undoSnapshot = {
+        type: 'LOAD_SAMPLE',
+        previousQueue: JSON.parse(JSON.stringify(queue)),
+        previousActiveIndex: activeCueIndex
+      };
+
+      pauseTimer();
+      queue = JSON.parse(JSON.stringify(DEFAULT_CUES));
+      saveQueueToStorage();
+      activateCue(0);
+
+      showUndoToast("📋 Sample FOYCE run loaded", 5, true);
+    }
+
+    // Stage Messaging
+    function sendQuickMessage(text) {
+      stageMessage = {
+        text: text,
+        visible: true,
+        timestamp: Date.now()
+      };
+      renderController();
+      syncState();
+    }
+
+    function sendCustomMessage() {
+      const text = inputCustomMessage.value.trim();
+      if (!text) return;
+      sendQuickMessage(text);
+      inputCustomMessage.value = '';
+    }
+
+    function clearStageMessage() {
+      stageMessage = {
+        text: '',
+        visible: false,
+        timestamp: 0
+      };
+      renderController();
+      syncState();
+    }
+
+    function flashStage() {
+      channel.postMessage({ type: 'FLASH_SCREEN' });
+    }
+
+    // BroadcastChannel Listeners
+    channel.onmessage = (event) => {
+      const { type } = event.data || {};
+      if (type === 'PONG' || type === 'STAGE_READY') {
+        lastPongReceived = Date.now();
+        setStageOnline(true);
+        if (type === 'STAGE_READY') {
+          syncState();
+        }
+      }
+    };
+
+    function setStageOnline(isOnline) {
+      if (isOnline) {
+        stageStatusBadge.classList.add('connected');
+        stageStatusText.textContent = "Stage Display Active";
+      } else {
+        stageStatusBadge.classList.remove('connected');
+        stageStatusText.textContent = "Stage Display Standby";
+      }
+    }
+
+    // Heartbeat Ping to check if stage timer is open
+    setInterval(() => {
+      channel.postMessage({ type: 'PING' });
+      if (Date.now() - lastPongReceived > 5000) {
+        setStageOnline(false);
+      }
+    }, 2000);
+
+    // Wall Clock & Queue Projected Finish Refresh
+    setInterval(() => {
+      const now = new Date();
+      liveClock.textContent = now.toTimeString().split(' ')[0];
+      updateQueueCalculations();
+    }, 1000);
+
+    // Event Listeners
+    btnStartPause.addEventListener('click', togglePlayPause);
+    btnReset.addEventListener('click', resetTimer);
+    btnAdvanceCue.addEventListener('click', advanceToNextCue);
+    btnUndoAdvance.addEventListener('click', performUndo);
+
+    heroCueTitleInput.addEventListener('change', () => {
+      if (queue[activeCueIndex]) {
+        queue[activeCueIndex].title = heroCueTitleInput.value.trim() || 'Untitled';
+        saveQueueToStorage();
+        renderQueue();
+      }
+      syncState();
+    });
+
+    btnAddCue.addEventListener('click', addCue);
+    inputNewTitle.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addCue();
+    });
+
+    btnSendCustomMsg.addEventListener('click', sendCustomMessage);
+    inputCustomMessage.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendCustomMessage();
+    });
+    btnClearMessage.addEventListener('click', clearStageMessage);
+    btnHeroDismissMsg.addEventListener('click', clearStageMessage);
+    btnFlashStage.addEventListener('click', flashStage);
+
+    btnToggleEditPresets.addEventListener('click', () => {
+      isEditingPresets = !isEditingPresets;
+      btnToggleEditPresets.classList.toggle('is-editing', isEditingPresets);
+      btnToggleEditPresets.textContent = isEditingPresets ? '✓ Done Editing' : '✏️ Edit Presets';
+    });
+
+    btnLaunchStage.addEventListener('click', () => {
+      window.open('stagetimer.html', 'FOYCE_STAGE_DISPLAY', 'width=1280,height=720');
+    });
+
+    btnLoadDefaults.addEventListener('click', loadSampleRun);
+    btnClearQueue.addEventListener('click', openDeleteQueueModal);
+    btnModalCancel.addEventListener('click', closeDeleteQueueModal);
+    btnModalConfirmDelete.addEventListener('click', confirmDeleteAllCues);
+    appModalBackdrop.addEventListener('click', (e) => {
+      if (e.target === appModalBackdrop) closeDeleteQueueModal();
+    });
+
+    // Threshold inputs
+    inputWarningThreshold.addEventListener('change', (e) => {
+      warningThreshold = parseInt(e.target.value, 10) || 60;
+      renderController();
+      syncState();
+    });
+
+    inputCriticalThreshold.addEventListener('change', (e) => {
+      criticalThreshold = parseInt(e.target.value, 10) || 30;
+      renderController();
+      syncState();
+    });
+
+    // Global Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      // Don't trigger shortcuts if typing in text inputs or textareas
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        if (e.key === 'Escape') {
+          document.activeElement.blur();
+        }
+        return;
+      }
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlayPause();
+      } else if (e.key === 'n' || e.key === 'N') {
+        advanceToNextCue();
+      } else if (e.key === 'r' || e.key === 'R') {
+        resetTimer();
+      } else if (e.key === 'f' || e.key === 'F') {
+        flashStage();
+      } else if (e.key === 'Escape') {
+        clearStageMessage();
+        closeEditCueDrawer();
+        closeDeleteQueueModal();
+      }
+    });
+
+    // Boot Initialization
+    loadPresetsFromStorage();
+    loadQueueFromStorage();
+    renderController();
+    syncState();
+  </script>
+</body>
+</html>

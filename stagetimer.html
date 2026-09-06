@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOYCE Stage Display</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,600;0,800;1,800&family=Outfit:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #040507;
+      --card-bg: rgba(255, 255, 255, 0.03);
+      --text-white: #ffffff;
+      --text-dim: #7e8b9b;
+      --color-normal: #f8fafc;
+      --color-warning: #f59e0b;
+      --color-critical: #ef4444;
+      --color-overtime: #dc2626;
+      --color-accent: #6366f1;
+      --glow-normal: 0 0 50px rgba(255, 255, 255, 0.08);
+      --glow-warning: 0 0 60px rgba(245, 158, 11, 0.28);
+      --glow-critical: 0 0 70px rgba(239, 68, 68, 0.38);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-white);
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      padding: 2.5vh 3vw 3vh;
+      position: relative;
+    }
+
+    /* Screen edge flash alert */
+    #flashOverlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      border: 0px solid rgba(239, 68, 68, 0.9);
+      box-shadow: inset 0 0 100px rgba(239, 68, 68, 0.7);
+      opacity: 0;
+      transition: opacity 0.15s ease-out;
+      z-index: 100;
+    }
+
+    #flashOverlay.flash-active {
+      opacity: 1;
+      animation: perimeterFlash 0.7s infinite alternate;
+    }
+
+    @keyframes perimeterFlash {
+      0% { opacity: 0.2; }
+      100% { opacity: 1; }
+    }
+
+    /* Top Bar: Title & Next Up */
+    header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 8vh;
+      z-index: 10;
+    }
+
+    .cue-info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.3vh;
+      max-width: 65%;
+    }
+
+    .cue-tag {
+      font-size: min(1.2vw, 15px);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--color-accent);
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 0.35em 0.9em;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cue-tag::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      display: inline-block;
+      box-shadow: 0 0 10px #10b981;
+    }
+
+    .cue-title {
+      font-size: min(3.8vw, 46px);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+    }
+
+    .next-cue-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 1.2vh 1.8vw;
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      backdrop-filter: blur(8px);
+      transition: opacity 0.3s ease;
+    }
+
+    .next-label {
+      font-size: min(1vw, 13px);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-dim);
+    }
+
+    .next-title {
+      font-size: min(1.8vw, 22px);
+      font-weight: 700;
+      color: #cbd5e1;
+      max-width: 300px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Center Stage: Giant Timer */
+    main {
+      flex: 1;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    .timer-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      width: 100%;
+    }
+
+    .timer-display {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: min(27vw, 42vh);
+      font-weight: 800;
+      line-height: 0.88;
+      letter-spacing: -0.05em;
+      font-variant-numeric: tabular-nums;
+      color: var(--color-normal);
+      text-shadow: var(--glow-normal);
+      transition: color 0.3s ease, text-shadow 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Status Color Variations */
+    .state-warning .timer-display {
+      color: var(--color-warning);
+      text-shadow: var(--glow-warning);
+    }
+
+    .state-critical .timer-display {
+      color: var(--color-critical);
+      text-shadow: var(--glow-critical);
+    }
+
+    .state-finished .timer-display {
+      color: var(--color-overtime);
+      animation: finishedBlink 0.9s infinite alternate cubic-bezier(0.4, 0, 0.6, 1);
+    }
+
+    @keyframes finishedBlink {
+      0% {
+        opacity: 0.25;
+        text-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+        transform: scale(0.98);
+      }
+      100% {
+        opacity: 1;
+        text-shadow: 0 0 90px rgba(239, 68, 68, 0.9);
+        transform: scale(1.02);
+      }
+    }
+
+    .status-badge {
+      margin-top: 1.5vh;
+      font-size: min(1.8vw, 24px);
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      padding: 0.4em 1.4em;
+      border-radius: 999px;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s ease;
+    }
+
+    .state-finished .status-badge {
+      opacity: 1;
+      transform: translateY(0);
+      background: rgba(220, 38, 38, 0.2);
+      border: 1.5px solid #ef4444;
+      color: #ef4444;
+      box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);
+      animation: badgePulse 1s infinite alternate;
+    }
+
+    @keyframes badgePulse {
+      from { box-shadow: 0 0 15px rgba(239, 68, 68, 0.3); }
+      to { box-shadow: 0 0 40px rgba(239, 68, 68, 0.8); }
+    }
+
+    /* Message Overlay: Sits below timer nicely without blocking */
+    .stage-message-overlay {
+      position: absolute;
+      bottom: 2vh;
+      width: 90%;
+      max-width: 1200px;
+      background: rgba(13, 16, 24, 0.92);
+      border: 2px solid #f59e0b;
+      box-shadow: 0 15px 50px rgba(0, 0, 0, 0.9), 0 0 40px rgba(245, 158, 11, 0.4);
+      backdrop-filter: blur(16px);
+      border-radius: 20px;
+      padding: 2.2vh 3vw;
+      display: flex;
+      align-items: center;
+      gap: 1.8vw;
+      opacity: 0;
+      transform: translateY(50px) scale(0.95);
+      pointer-events: none;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 50;
+    }
+
+    .stage-message-overlay.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .message-icon {
+      font-size: min(3.5vw, 44px);
+      flex-shrink: 0;
+      animation: alertBounce 1.5s infinite ease-in-out;
+    }
+
+    @keyframes alertBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    .message-content {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .message-badge {
+      font-size: min(1vw, 13px);
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #f59e0b;
+      margin-bottom: 2px;
+    }
+
+    .message-text {
+      font-size: min(3vw, 38px);
+      font-weight: 800;
+      line-height: 1.2;
+      color: #ffffff;
+      letter-spacing: -0.01em;
+      word-break: break-word;
+    }
+
+    /* Bottom: Sleek Progress Bar */
+    footer {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1vh;
+      z-index: 10;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.07);
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 100%;
+      background: #6366f1;
+      border-radius: 999px;
+      transition: width 0.4s linear, background-color 0.3s ease;
+      box-shadow: 0 0 12px currentColor;
+    }
+
+    .state-warning .progress-bar {
+      background: var(--color-warning);
+    }
+
+    .state-critical .progress-bar {
+      background: var(--color-critical);
+    }
+
+    .state-finished .progress-bar {
+      background: var(--color-overtime);
+    }
+
+    /* Subtle controls & sync indicator (fades out when mouse idle) */
+    .hud-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: min(1vw, 13px);
+      color: var(--text-dim);
+      opacity: 0.4;
+      transition: opacity 0.3s ease;
+    }
+
+    body:hover .hud-controls {
+      opacity: 0.9;
+    }
+
+    .sync-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sync-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      transition: background-color 0.3s ease;
+    }
+
+    .sync-dot.offline {
+      background: #ef4444;
+      box-shadow: 0 0 8px #ef4444;
+    }
+
+    .fullscreen-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #cbd5e1;
+      padding: 0.4em 0.8em;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .fullscreen-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+
+    /* Initial waiting state placeholder */
+    .standby-pill {
+      font-size: min(2vw, 24px);
+      color: var(--text-dim);
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body id="stageBody">
+
+  <div id="flashOverlay"></div>
+
+  <!-- Top Header: Cue Title & Next Up -->
+  <header>
+    <div class="cue-info">
+      <div class="cue-tag" id="cueTag">FOYCE CUE</div>
+      <div class="cue-title" id="cueTitle">Standby for Session</div>
+    </div>
+
+    <div class="next-cue-card" id="nextCueCard" style="opacity: 0;">
+      <span class="next-label">Next Up</span>
+      <span class="next-title" id="nextCueTitle">—</span>
+    </div>
+  </header>
+
+  <!-- Center Timer Section -->
+  <main>
+    <div class="timer-container" id="timerContainer">
+      <div class="timer-display" id="timerDisplay">00:00</div>
+      <div class="status-badge" id="statusBadge">TIME IS UP</div>
+    </div>
+
+    <!-- Message Overlay Toast -->
+    <div class="stage-message-overlay" id="stageMessageOverlay">
+      <div class="message-icon">📢</div>
+      <div class="message-content">
+        <span class="message-badge">DIRECT FROM STAGE CONTROL</span>
+        <span class="message-text" id="messageText">Please wrap up promptly</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom: Progress & Connection -->
+  <footer>
+    <div class="progress-track">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="hud-controls">
+      <div class="sync-status">
+        <div class="sync-dot" id="syncDot"></div>
+        <span id="syncText">Connected to Controller</span>
+      </div>
+      <div>Double-click anywhere or press F11 for Fullscreen</div>
+      <button class="fullscreen-btn" id="fsToggleBtn">⛶ Fullscreen</button>
+    </div>
+  </footer>
+
+  <script>
+    // Constants & Channels
+    const CHANNEL_NAME = 'foyce-cue-timer-channel';
+    const STORAGE_KEY = 'foyce_cue_timer_state';
+    const channel = new BroadcastChannel(CHANNEL_NAME);
+
+    // Elements
+    const body = document.getElementById('stageBody');
+    const cueTag = document.getElementById('cueTag');
+    const cueTitle = document.getElementById('cueTitle');
+    const nextCueCard = document.getElementById('nextCueCard');
+    const nextCueTitle = document.getElementById('nextCueTitle');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const statusBadge = document.getElementById('statusBadge');
+    const progressBar = document.getElementById('progressBar');
+    const messageOverlay = document.getElementById('stageMessageOverlay');
+    const messageText = document.getElementById('messageText');
+    const flashOverlay = document.getElementById('flashOverlay');
+    const syncDot = document.getElementById('syncDot');
+    const syncText = document.getElementById('syncText');
+    const fsToggleBtn = document.getElementById('fsToggleBtn');
+
+    // Local Display State
+    let lastState = null;
+    let localTimerInterval = null;
+    let localRemainingSeconds = 0;
+    let localTotalSeconds = 0;
+    let isRunning = false;
+    let warningThreshold = 60;
+    let criticalThreshold = 30;
+    let lastHeartbeatTime = Date.now();
+
+    // Format Seconds to MM:SS or H:MM:SS
+    function formatTime(totalSec) {
+      if (totalSec < 0) totalSec = 0;
+      const hours = Math.floor(totalSec / 3600);
+      const minutes = Math.floor((totalSec % 3600) / 60);
+      const seconds = Math.floor(totalSec % 60);
+
+      const mm = String(minutes).padStart(2, '0');
+      const ss = String(seconds).padStart(2, '0');
+
+      if (hours > 0) {
+        return `${hours}:${mm}:${ss}`;
+      }
+      return `${mm}:${ss}`;
+    }
+
+    // Apply State to DOM
+    function render() {
+      timerDisplay.textContent = formatTime(localRemainingSeconds);
+
+      // Progress bar percentage
+      if (localTotalSeconds > 0) {
+        const percent = Math.max(0, Math.min(100, (localRemainingSeconds / localTotalSeconds) * 100));
+        progressBar.style.width = `${percent}%`;
+      } else {
+        progressBar.style.width = '0%';
+      }
+
+      // State Classes
+      body.classList.remove('state-warning', 'state-critical', 'state-finished');
+
+      if (localRemainingSeconds === 0 && localTotalSeconds > 0) {
+        body.classList.add('state-finished');
+      } else if (localRemainingSeconds <= criticalThreshold && localRemainingSeconds > 0) {
+        body.classList.add('state-critical');
+      } else if (localRemainingSeconds <= warningThreshold && localRemainingSeconds > 0) {
+        body.classList.add('state-warning');
+      }
+    }
+
+    // Local drift-corrected countdown tick
+    function startLocalTick() {
+      if (localTimerInterval) clearInterval(localTimerInterval);
+
+      localTimerInterval = setInterval(() => {
+        if (!isRunning) return;
+
+        if (localRemainingSeconds > 0) {
+          localRemainingSeconds--;
+          render();
+        } else {
+          localRemainingSeconds = 0;
+          isRunning = false;
+          render();
+          clearInterval(localTimerInterval);
+        }
+      }, 1000);
+    }
+
+    // Process State Update from Controller
+    function handleStateSync(state) {
+      lastState = state;
+      lastHeartbeatTime = Date.now();
+      updateSyncStatus(true);
+
+      if (!state.activeCue) {
+        cueTitle.textContent = "Standby for Session";
+        timerDisplay.textContent = "00:00";
+        progressBar.style.width = "0%";
+        body.classList.remove('state-warning', 'state-critical', 'state-finished');
+        nextCueCard.style.opacity = '0';
+        return;
+      }
+
+      // Update Titles
+      cueTitle.textContent = state.activeCue.title || "Untitled Cue";
+      cueTag.textContent = state.activeCue.tag || "FOYCE CUE";
+
+      // Update Next Cue
+      if (state.nextCue && state.nextCue.title) {
+        nextCueTitle.textContent = `${state.nextCue.title} (${formatTime(state.nextCue.duration)})`;
+        nextCueCard.style.opacity = '1';
+      } else {
+        nextCueCard.style.opacity = '0';
+      }
+
+      // Thresholds
+      if (state.thresholds) {
+        warningThreshold = state.thresholds.warning || 60;
+        criticalThreshold = state.thresholds.critical || 30;
+      }
+
+      // Update Times
+      localTotalSeconds = state.activeCue.totalSeconds || 0;
+      localRemainingSeconds = state.activeCue.remainingSeconds;
+      isRunning = state.activeCue.isRunning;
+
+      render();
+
+      if (isRunning) {
+        startLocalTick();
+      } else {
+        if (localTimerInterval) clearInterval(localTimerInterval);
+      }
+
+      // Stage Message Handling
+      if (state.message && state.message.visible && state.message.text.trim()) {
+        messageText.textContent = state.message.text;
+        messageOverlay.classList.add('visible');
+      } else {
+        messageOverlay.classList.remove('visible');
+      }
+
+      // Screen Flash alert command
+      if (state.flashAlert) {
+        triggerScreenFlash();
+      }
+    }
+
+    // Trigger visual screen perimeter flash
+    let flashTimeout = null;
+    function triggerScreenFlash() {
+      flashOverlay.classList.add('flash-active');
+      if (flashTimeout) clearTimeout(flashTimeout);
+      flashTimeout = setTimeout(() => {
+        flashOverlay.classList.remove('flash-active');
+      }, 3000);
+    }
+
+    // BroadcastChannel Listener
+    channel.onmessage = (event) => {
+      const { type, data } = event.data || {};
+      if (type === 'STATE_SYNC') {
+        handleStateSync(data);
+      } else if (type === 'PING') {
+        lastHeartbeatTime = Date.now();
+        updateSyncStatus(true);
+        channel.postMessage({ type: 'PONG', timestamp: Date.now() });
+      } else if (type === 'FLASH_SCREEN') {
+        triggerScreenFlash();
+      }
+    };
+
+    // Check LocalStorage on initial load
+    function initFromLocalStorage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          handleStateSync(parsed);
+        }
+      } catch (e) {
+        console.error("Failed reading initial state from storage", e);
+      }
+    }
+
+    // Connection Health Watchdog
+    function updateSyncStatus(isOnline) {
+      if (isOnline) {
+        syncDot.classList.remove('offline');
+        syncText.textContent = "Live Link Active";
+      } else {
+        syncDot.classList.add('offline');
+        syncText.textContent = "Waiting for Controller...";
+      }
+    }
+
+    setInterval(() => {
+      if (Date.now() - lastHeartbeatTime > 6000) {
+        updateSyncStatus(false);
+      }
+    }, 2000);
+
+    // Announce stage display presence to controller
+    function announcePresence() {
+      channel.postMessage({ type: 'STAGE_READY', timestamp: Date.now() });
+    }
+
+    // Fullscreen Support
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.warn("Fullscreen toggle error:", err);
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    fsToggleBtn.addEventListener('click', toggleFullscreen);
+    document.addEventListener('dblclick', toggleFullscreen);
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+      }
+    });
+
+    // Boot
+    initFromLocalStorage();
+    announcePresence();
+  </script>
+</body>
+</html>
